@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
 #include "tensor.h"
+#include <cublas_v2.h>
+#include <cassert>
 
 Tensor* zeros(int* shape, int ndim) {
     Tensor* t = new Tensor();
@@ -42,3 +44,13 @@ void free_tensor(Tensor* t) {
     delete[] t->strides;
     delete t;
 }
+
+Tensor* matmul(Tensor* a, Tensor* b) {
+    assert(a->ndim == b->ndim);
+    assert(a->shape[a->ndim-1] == b->shape[b->ndim-2]);
+    
+    for (int i = 0; i < a->ndim-2; i++) {
+        assert(a->shape[i] == b->shape[i]);
+    }
+    return a;
+};

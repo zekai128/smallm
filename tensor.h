@@ -22,3 +22,6 @@ Tensor* zeros(int* shape, int ndim);
 Tensor* from_host(float* data, int* shape, int ndim);
 void    to_host(Tensor* t, float* out);
 void    free_tensor(Tensor* t);
+
+// ---- Math ----
+Tensor* matmul(Tensor* a, Tensor* b);

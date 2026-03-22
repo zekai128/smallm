@@ -13,7 +13,7 @@ struct Tensor {
     bool   requires_grad;
 
     // Autograd
-    std::vector<Tensor*>  children;
+    std::vector<Tensor*>  parents;
     std::function<void()> backward_fn;
 };
 
@@ -23,5 +23,12 @@ Tensor* from_host(float* data, int* shape, int ndim);
 void    to_host(Tensor* t, float* out);
 void    free_tensor(Tensor* t);
 
+// ---- Print ----
+void    print_tensor(Tensor* t);
+
 // ---- Math ----
+Tensor* add(Tensor* a, Tensor* b);
 Tensor* matmul(Tensor* a, Tensor* b);
+Tensor* relu(Tensor* a);
+Tensor* softmax(Tensor* a);
+Tensor* cross_entropy(Tensor* probs, Tensor* labels);

@@ -26,6 +26,24 @@ int main() {
     print_tensor(add(x, y));
     // expected: [11, 22, 33, 44]
 
+    // --- softmax test (2D) ---
+    // row 0: [1,2,3] -> [0.0900, 0.2447, 0.6652]
+    // row 1: [1,1,1] -> [0.3333, 0.3333, 0.3333]
+    printf("=== softmax 2D ===\n");
+    float s_data[] = {1, 2, 3,  1, 1, 1};
+    int s_shape[] = {2, 3};
+    Tensor* s = from_host(s_data, s_shape, 2);
+    print_tensor(softmax(s));
+
+    // --- softmax test (3D, THREADS_PER_BLOCK=2 to stress test padding) ---
+    // set THREADS_PER_BLOCK=2 before running this: last_dim=3, blocks_per_row=2
+    printf("=== softmax 3D ===\n");
+    float s3_data[] = {1,2,3, 1,1,1,  1,2,3, 1,1,1};
+    int s3_shape[] = {2, 2, 3};
+    Tensor* s3 = from_host(s3_data, s3_shape, 3);
+    print_tensor(softmax(s3));
+    // expected: all 4 rows same as above
+
     // --- relu test ---
     // [-2, -1, 0, 1, 2] -> [0, 0, 0, 1, 2]
     printf("=== relu ===\n");

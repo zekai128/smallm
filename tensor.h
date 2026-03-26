@@ -3,6 +3,8 @@
 #include <functional>
 #include <vector>
 
+constexpr int THREADS_PER_BLOCK = 1024;
+
 struct Tensor {
     float* data;         // GPU memory
     float* grad;         // GPU memory for gradients

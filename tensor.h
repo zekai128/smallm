@@ -32,5 +32,20 @@ void    print_tensor(Tensor* t);
 Tensor* add(Tensor* a, Tensor* b);
 Tensor* matmul(Tensor* a, Tensor* b);
 Tensor* relu(Tensor* a);
+Tensor* gelu(Tensor* a);
+Tensor* mul(Tensor* a, Tensor* b);
+Tensor* scale(Tensor* a, float s);
 Tensor* softmax(Tensor* a);
+Tensor* layer_norm(Tensor* a, Tensor* gamma, Tensor* beta, float eps);
 Tensor* cross_entropy(Tensor* probs, Tensor* labels);
+Tensor* embedding(Tensor* weight, Tensor* indices);
+Tensor* permute(Tensor* a, int* order);
+Tensor* reshape(Tensor* a, int* new_shape, int new_ndim);
+Tensor* masked_fill(Tensor* a, Tensor* mask, float val);
+
+// ---- Autograd ----
+void backward(Tensor* a);
+
+// ---- Optimizer ----
+void sgd_step(std::vector<Tensor*>& params, float lr);
+void zero_grad(std::vector<Tensor*>& params);

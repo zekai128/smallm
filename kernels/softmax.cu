@@ -100,6 +100,23 @@ void elementwise_divide_by_sum(float* out, float* in, float* rowsums, int rows, 
     elementwise_divide_by_sum_kernel<<<total_blocks, THREADS_PER_BLOCK>>>(out, in, rowsums, blocks_per_row, dim);
 }
 
+__global__ void elementwise_mul_kernel(float* out, float* a, float* b, int size) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < size) out[i] = a[i] * b[i];
+}
+
+// grad_in[row,col] += s[row,col] * (g[row,col] - dot(g,s)[row])
+__global__ void softmax_backward_kernel(float* grad_in, float* s, float* g, float* row_dots, int blocks_per_row, int dim) {
+    int row   = blockIdx.x / blocks_per_row;
+    int chunk = blockIdx.x % blocks_per_row;
+    int tid   = threadIdx.x;
+    int col   = chunk * blockDim.x + tid;
+    if (col < dim) {
+        int idx = row * dim + col;
+        grad_in[idx] += s[idx] * (g[idx] - row_dots[row]);
+    }
+}
+
 /**
  * numerically stable softmax over last dim, supports arbitrary tensor shapes.
  * 1. compute row maxes
@@ -128,6 +145,34 @@ Tensor* softmax(Tensor* a) {
     cudaFree(rowmaxes);
     cudaFree(rowsums);
     free_tensor(shifted_exp);
+
+    if (a->requires_grad) {
+        output->requires_grad = true;
+        output->parents = {a};
+        output->backward_fn = [a, output, rows, last_dim]() {
+            if (!a->grad) {
+                cudaMalloc(&a->grad, a->size * sizeof(float));
+                cudaMemset(a->grad, 0, a->size * sizeof(float));
+            }
+
+            // compute g*s elementwise into temp buffer
+            float* gs;
+            cudaMalloc(&gs, a->size * sizeof(float));
+            int flat_blocks = (a->size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+            elementwise_mul_kernel<<<flat_blocks, THREADS_PER_BLOCK>>>(gs, output->grad, output->data, a->size);
+
+            // per-row dot product dot(g, s)
+            float* row_dots = row_reduce(gs, rows, last_dim, SumOp{});
+            cudaFree(gs);
+
+            // apply: grad_in += s * (g - dot)
+            int blocks_per_row = (last_dim + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+            int total_blocks   = rows * blocks_per_row;
+            softmax_backward_kernel<<<total_blocks, THREADS_PER_BLOCK>>>(a->grad, output->data, output->grad, row_dots, blocks_per_row, last_dim);
+
+            cudaFree(row_dots);
+        };
+    }
 
     return output;
 }

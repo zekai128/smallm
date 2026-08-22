@@ -128,5 +128,56 @@ Tensor* matmul(Tensor* a, Tensor* b) {
     );
 
     cublasDestroy(handle);
+
+    if (a->requires_grad || b->requires_grad) {
+        c->requires_grad = true;
+        c->parents = {a, b};
+        c->backward_fn = [a, b, c, m, n, k, batchCount, stride_A, stride_B, stride_C]() {
+            cublasHandle_t handle;
+            cublasCreate(&handle);
+            float alpha = 1.0f, beta = 1.0f;  // beta=1 to accumulate into existing grad
+
+            if (a->requires_grad) {
+                if (!a->grad) {
+                    cudaMalloc(&a->grad, a->size * sizeof(float));
+                    cudaMemset(a->grad, 0, a->size * sizeof(float));
+                }
+                // grad_A = grad_C @ B^T  (M×K) = (M×N) @ (N×K)
+                cublasSgemmStridedBatched(
+                    handle,
+                    CUBLAS_OP_T, CUBLAS_OP_N,
+                    k, m, n,
+                    &alpha,
+                    b->data, n, stride_B,
+                    c->grad, n, stride_C,
+                    &beta,
+                    a->grad, k, stride_A,
+                    batchCount
+                );
+            }
+
+            if (b->requires_grad) {
+                if (!b->grad) {
+                    cudaMalloc(&b->grad, b->size * sizeof(float));
+                    cudaMemset(b->grad, 0, b->size * sizeof(float));
+                }
+                // grad_B = A^T @ grad_C  (K×N) = (K×M) @ (M×N)
+                cublasSgemmStridedBatched(
+                    handle,
+                    CUBLAS_OP_N, CUBLAS_OP_T,
+                    n, k, m,
+                    &alpha,
+                    c->grad, n, stride_C,
+                    a->data, k, stride_A,
+                    &beta,
+                    b->grad, n, stride_B,
+                    batchCount
+                );
+            }
+
+            cublasDestroy(handle);
+        };
+    }
+
     return c;
 }

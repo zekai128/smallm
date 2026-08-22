@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
 #include "tensor.h"
+#include <vector>
+#include <stack>
+#include <unordered_set>
+#include <algorithm>
 
 Tensor* zeros(int* shape, int ndim) {
     Tensor* t = new Tensor();
@@ -79,4 +83,47 @@ void print_tensor(Tensor* t) {
     printf("\n");
 
     delete[] host;
+}
+
+__global__ void sgd_kernel(float* data, float* grad, float lr, int size) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < size) data[i] -= lr * grad[i];
+}
+
+void sgd_step(std::vector<Tensor*>& params, float lr) {
+    for (Tensor* p : params) {
+        if (!p->grad) continue;
+        int blocks = (p->size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+        sgd_kernel<<<blocks, THREADS_PER_BLOCK>>>(p->data, p->grad, lr, p->size);
+    }
+}
+
+void zero_grad(std::vector<Tensor*>& params) {
+    for (Tensor* p : params) {
+        if (p->grad) cudaMemset(p->grad, 0, p->size * sizeof(float));
+    }
+}
+
+void dfs(std::vector<Tensor*>& topo, std::unordered_set<Tensor*>& visited, Tensor* node) {
+    if (visited.count(node)) return;
+    visited.insert(node);
+    for (Tensor* parent : node->parents) {
+        dfs(topo, visited, parent);
+    }
+    topo.push_back(node);
+}
+
+void backward(Tensor* a) {
+    std::vector<Tensor*> topo;
+    std::unordered_set<Tensor*> visited;
+
+    cudaMalloc(&a->grad, a->size * sizeof(float));
+    std::vector<float> ones(a->size, 1.0f);
+    cudaMemcpy(a->grad, ones.data(), a->size * sizeof(float), cudaMemcpyHostToDevice);
+
+    dfs(topo, visited, a);
+    std::reverse(topo.begin(), topo.end());
+    for (int i = 0; i < topo.size(); i++) {
+        if (topo[i]->backward_fn) topo[i]->backward_fn();
+    }
 }

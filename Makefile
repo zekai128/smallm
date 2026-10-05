@@ -1,13 +1,22 @@
-NVCC     = nvcc
-CFLAGS   = -std=c++17 -I.
-LIBS     = -lcublas
+NVCC    = nvcc
+CFLAGS  = -std=c++17 -I. -dc -g
+LIBS    = -lcublas
 
-SRCS     = main.cu tensor.cu $(wildcard kernels/*.cu)
+KERNEL_SRCS = $(wildcard kernels/*.cu)
+KERNEL_OBJS = $(KERNEL_SRCS:.cu=.o)
 
-all: main
+COMMON_OBJS = tensor.o transformer.o $(KERNEL_OBJS)
 
-main: $(SRCS)
-	$(NVCC) $(CFLAGS) $(LIBS) -o main $(SRCS)
+all: main training
+
+main: main.o $(COMMON_OBJS)
+	$(NVCC) $(LIBS) -o $@ $^
+
+training: training.o $(COMMON_OBJS)
+	$(NVCC) $(LIBS) -o $@ $^
+
+%.o: %.cu
+	$(NVCC) $(CFLAGS) -o $@ $<
 
 clean:
-	rm -f main
+	rm -f main training *.o kernels/*.o

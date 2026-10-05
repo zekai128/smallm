@@ -119,6 +119,28 @@ int main() {
         }
 
         printf("=== epoch %d  avg_loss=%.4f ===\n", epoch+1, epoch_loss / steps_per_epoch);
+
+        // ---- test accuracy ----
+        float* h_test_images = load_bin("data/test_images.bin", 10000 * INPUT_DIM);
+        float* h_test_labels = load_bin("data/test_labels.bin", 10000);
+        int correct = 0;
+        for (int i = 0; i < 10000; i++) {
+            int x_shape[] = {1, INPUT_DIM};
+            Tensor* x  = from_host(h_test_images + i * INPUT_DIM, x_shape, 2);
+            Tensor* h1 = relu(add(matmul(x, W1), b1));
+            Tensor* h2 = relu(add(matmul(h1, W2), b2));
+            Tensor* logits = add(matmul(h2, W3), b3);
+            float logits_h[OUTPUT_DIM];
+            to_host(logits, logits_h);
+            int pred = 0;
+            for (int c = 1; c < OUTPUT_DIM; c++)
+                if (logits_h[c] > logits_h[pred]) pred = c;
+            if (pred == (int)h_test_labels[i]) correct++;
+            free_tensor(x); free_tensor(h1); free_tensor(h2); free_tensor(logits);
+        }
+        printf("=== epoch %d  test_acc=%.2f%% ===\n", epoch+1, 100.0f * correct / 10000);
+        delete[] h_test_images;
+        delete[] h_test_labels;
     }
 
     delete[] h_images;

@@ -25,6 +25,7 @@ Tensor* zeros(int* shape, int ndim) {
     t->grad = nullptr;
 
     t->requires_grad = false;
+    t->is_view = false;
 
     return t;
 }
@@ -40,7 +41,7 @@ void to_host(Tensor* t, float* out) {
 }
 
 void free_tensor(Tensor* t) {
-    cudaFree(t->data);
+    if (!t->is_view) cudaFree(t->data);
     if (t->grad) cudaFree(t->grad);
     delete[] t->shape;
     delete[] t->strides;
@@ -82,6 +83,30 @@ void print_tensor(Tensor* t) {
     }
     printf("\n");
 
+    delete[] host;
+}
+
+void print_shape(Tensor* t, const char* label) {
+    printf("%s: [", label ? label : "tensor");
+    for (int i = 0; i < t->ndim; i++) {
+        printf("%d", t->shape[i]);
+        if (i < t->ndim - 1) printf(", ");
+    }
+    printf("]\n");
+}
+
+void print_tensor_sample(Tensor* t, int n, const char* label) {
+    float* host = new float[t->size];
+    to_host(t, host);
+    int show = n < t->size ? n : t->size;
+    printf("%s shape=[", label ? label : "tensor");
+    for (int i = 0; i < t->ndim; i++) {
+        printf("%d", t->shape[i]);
+        if (i < t->ndim - 1) printf(", ");
+    }
+    printf("] first %d values: ", show);
+    for (int i = 0; i < show; i++) printf("%.4f ", host[i]);
+    printf("\n");
     delete[] host;
 }
 

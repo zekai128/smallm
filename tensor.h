@@ -13,6 +13,7 @@ struct Tensor {
     int    ndim;
     int    size;         // total number of elements
     bool   requires_grad;
+    bool   is_view;       // if true, data is owned by another tensor — skip cudaFree
 
     // Autograd
     std::vector<Tensor*>  parents;
@@ -27,8 +28,9 @@ void    free_tensor(Tensor* t);
 
 // ---- Print ----
 void    print_tensor(Tensor* t);
+void    print_tensor_sample(Tensor* t, int n, const char* label = nullptr);
+void    print_shape(Tensor* t, const char* label = nullptr);
 
-// ---- Math ----
 Tensor* add(Tensor* a, Tensor* b);
 Tensor* matmul(Tensor* a, Tensor* b);
 Tensor* relu(Tensor* a);
@@ -42,6 +44,7 @@ Tensor* embedding(Tensor* weight, Tensor* indices);
 Tensor* permute(Tensor* a, int* order);
 Tensor* reshape(Tensor* a, int* new_shape, int new_ndim);
 Tensor* masked_fill(Tensor* a, Tensor* mask, float val);
+Tensor* contiguous(Tensor* a);
 
 // ---- Autograd ----
 void backward(Tensor* a);

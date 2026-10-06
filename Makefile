@@ -7,12 +7,15 @@ KERNEL_OBJS = $(KERNEL_SRCS:.cu=.o)
 
 COMMON_OBJS = tensor.o transformer.o $(KERNEL_OBJS)
 
-all: main training
+all: main training inference
 
 main: main.o $(COMMON_OBJS)
 	$(NVCC) $(LIBS) -o $@ $^
 
 training: training.o $(COMMON_OBJS)
+	$(NVCC) $(LIBS) -o $@ $^
+
+inference: inference.o $(COMMON_OBJS)
 	$(NVCC) $(LIBS) -o $@ $^
 
 %.o: %.cu

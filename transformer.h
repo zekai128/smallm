@@ -27,3 +27,5 @@ struct Transformer {
 Transformer make_transformer(int vocab_size, int max_seq_len, int d_model, int n_heads, int n_layers);
 std::vector<Tensor*> transformer_params(Transformer* model);
 Tensor* transformer_forward(Transformer* model, Tensor* token_ids, int B, int T, int d_model, int n_heads, std::vector<Tensor*>& activations);
+void save_checkpoint(Transformer* model, const char* path);
+void load_checkpoint(Transformer* model, const char* path);

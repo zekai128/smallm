@@ -3,6 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <cstdlib>
+#include <cstdio>
 #include <iostream>
 
 static float EPS = 1e-5;
@@ -284,4 +285,38 @@ Tensor* transformer_forward(Transformer* model, Tensor* token_ids, int B, int T,
     activations.push_back(probs);
 
     return probs;
+}
+
+void save_checkpoint(Transformer* model, const char* path) {
+    std::vector<Tensor*> params = transformer_params(model);
+
+    FILE* f = fopen(path, "wb");
+    if (!f) { fprintf(stderr, "cannot open %s for writing\n", path); return; }
+
+    for (Tensor* p : params) {
+        float* h = new float[p->size];
+        to_host(p, h);
+        fwrite(h, sizeof(float), p->size, f);
+        delete[] h;
+    }
+
+    fclose(f);
+    printf("checkpoint saved to %s\n", path);
+}
+
+void load_checkpoint(Transformer* model, const char* path) {
+    std::vector<Tensor*> params = transformer_params(model);
+
+    FILE* f = fopen(path, "rb");
+    if (!f) { fprintf(stderr, "cannot open %s for reading\n", path); return; }
+
+    for (Tensor* p : params) {
+        float* h = new float[p->size];
+        fread(h, sizeof(float), p->size, f);
+        cudaMemcpy(p->data, h, p->size * sizeof(float), cudaMemcpyHostToDevice);
+        delete[] h;
+    }
+
+    fclose(f);
+    printf("checkpoint loaded from %s\n", path);
 }

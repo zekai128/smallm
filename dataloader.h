@@ -11,6 +11,8 @@ struct DataLoader {
     int   B;
     int   T;
     int   vocab_size;
+    int   char_to_id[256];
+    char  id_to_char[256];
 };
 
 // Reads text file, maps each unique char to an integer id.
@@ -31,13 +33,15 @@ inline void dataloader_init(DataLoader* dl, const char* path, int B, int T) {
     fclose(f);
 
     // Build vocab: unique chars in order of first appearance
-    int char_to_id[256];
-    memset(char_to_id, -1, sizeof(char_to_id));
+    memset(dl->char_to_id, -1, sizeof(dl->char_to_id));
     int vocab_size = 0;
     for (long i = 0; i < file_size; i++) {
         unsigned char c = (unsigned char)text[i];
-        if (char_to_id[c] == -1)
-            char_to_id[c] = vocab_size++;
+        if (dl->char_to_id[c] == -1) {
+            dl->char_to_id[c] = vocab_size;
+            dl->id_to_char[vocab_size] = (char)c;
+            vocab_size++;
+        }
     }
     dl->vocab_size = vocab_size;
 
@@ -45,7 +49,7 @@ inline void dataloader_init(DataLoader* dl, const char* path, int B, int T) {
     dl->n_tokens = (int)file_size;
     dl->tokens   = new int[dl->n_tokens];
     for (int i = 0; i < dl->n_tokens; i++)
-        dl->tokens[i] = char_to_id[(unsigned char)text[i]];
+        dl->tokens[i] = dl->char_to_id[(unsigned char)text[i]];
 
     delete[] text;
 

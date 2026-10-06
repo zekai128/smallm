@@ -14,11 +14,11 @@ int main() {
 
     const int B        = 4;
     const int T        = 64;
-    const int d_model  = 256;
-    const int n_heads  = 4;
-    const int n_layers = 4;
+    const int d_model  = 1024;
+    const int n_heads  = 16;
+    const int n_layers = 24;
     const float lr     = 1e-3f;
-    const int n_iters  = 2000;
+    const int n_iters  = 15000;
 
     DataLoader dl;
     dataloader_init(&dl, "data/tinyshakespeare.txt", B, T);
@@ -39,10 +39,12 @@ int main() {
 
         Tensor* loss = cross_entropy(probs, labels_flat);
 
-        // print loss
-        float loss_val;
-        to_host(loss, &loss_val);
-        printf("iter %d  loss: %.4f\n", iter, loss_val);
+        // print loss every 100 iters
+        if (iter % 100 == 0) {
+            float loss_val;
+            to_host(loss, &loss_val);
+            printf("iter %d  loss: %.4f\n", iter, loss_val);
+        }
 
         // backward
         backward(loss);
@@ -58,6 +60,7 @@ int main() {
         free_activations(activations);
     }
 
+    save_checkpoint(&model, "checkpoint.bin");
     dataloader_free(&dl);
     return 0;
 }

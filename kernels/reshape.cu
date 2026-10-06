@@ -24,12 +24,9 @@ Tensor* reshape(Tensor* a, int* new_shape, int new_ndim) {
         out->requires_grad = true;
         out->parents = {a};
         out->backward_fn = [a, out]() {
-            if (!a->grad) {
-                cudaMalloc(&a->grad, a->size * sizeof(float));
-                cudaMemset(a->grad, 0, a->size * sizeof(float));
-            }
-            // grad flows back unchanged — same memory, just reinterpreted
+            if (a->grad) cudaFree(a->grad);
             a->grad = out->grad;
+            out->grad = nullptr;
         };
     }
 
